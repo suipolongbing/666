@@ -41,6 +41,8 @@ var { GroundType } = require('./ground')
 //     onAttackEnd: function() {}, //攻击后
 //     onBeAttackedStart: function() {}, //被攻击前
 //     onBeAttackedEnd: function() {}, //被攻击后
+//     onAttack: function() {}, //攻击
+//     onBeAttack: function() {}, //被攻击
 //     onEnd: function() {}, //死亡时
 //     onTableCardChange: function() {}, //桌面卡牌变动时
 //     onCemetery: function() {}, //在墓地时
@@ -95,9 +97,9 @@ const CardList = [
         status: CardStatus.NORMAL,
         effect: CardEffect.KONG,
         statusRound: 0,
-        onStart: function() {
-            
-        },
+        onStart: function () { },
+        onAttack: function () { }, //攻击
+        onBeAttack: function () { }, //被攻击
     },
     {
         id: 2,
@@ -162,7 +164,7 @@ const CardList = [
         status: CardStatus.NORMAL,
         effect: CardEffect.KONG,
         statusRound: 0,
-    },  
+    },
     {
         id: 5,
         name: "肆",

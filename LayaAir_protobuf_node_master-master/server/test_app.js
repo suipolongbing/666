@@ -264,8 +264,7 @@ io.on('connection', function (socket) {
     let who = args[0].who;
     let characterIndex = args[0].characterIndex;
     let moveIndex = args[0].moveIndex;
-    let consume = args[0].consume;
-    moveCharacter(roomNumber, who, characterIndex, moveIndex, consume)
+    moveCharacter(roomNumber, who, characterIndex, moveIndex)
   });
 
   socket.on('ATTACK_CHARACTER', function () {
@@ -722,7 +721,8 @@ var gameOver = function (roomNumber, who) {
 }
 
 /*
- * handIndex 第几张手牌;
+ * 召唤
+ * handIndex 第几张手牌
  * summonIndex 召唤到场上哪个空位
  */
 var outCard = function (roomNumber, who, handIndex, summonIndex) {
@@ -775,7 +775,12 @@ var outCard = function (roomNumber, who, handIndex, summonIndex) {
   }
 }
 
-var moveCharacter = function (roomNumber, who, characterIndex, moveIndex, consume) {
+/*
+ * 移动
+ * characterIndex 移动的生物Index
+ * moveIndex 目的地Index
+ */
+var moveCharacter = function (roomNumber, who, characterIndex, moveIndex) {
   let other = who == 'one' ? 'two' : 'one';
   var card = memoryData[roomNumber][who]['vacancy'][characterIndex];
   if (memoryData[roomNumber][who]['vacancy'][moveIndex] == moveIndex &&
@@ -819,6 +824,11 @@ var moveCharacter = function (roomNumber, who, characterIndex, moveIndex, consum
   }
 }
 
+/*
+ * 攻击
+ * myCharacterIndex 发动攻击的生物Index
+ * otherCharacterIndex 被攻击的生物Index
+ */
 var attackCharacter = function (roomNumber, who, myCharacterIndex, otherCharacterIndex) {
   let other = who == 'one' ? 'two' : 'one';
   let overType = 0;
@@ -873,11 +883,62 @@ var attackCharacter = function (roomNumber, who, myCharacterIndex, otherCharacte
       }
     }
 
-    let oterHurt = memoryData[roomNumber][other]['vacancy'][otherCharacterIndex]['life'] - memoryData[roomNumber][who]['vacancy'][myCharacterIndex]['attack'];
-    let myHurt = memoryData[roomNumber][who]['vacancy'][myCharacterIndex]['life'] - memoryData[roomNumber][other]['vacancy'][otherCharacterIndex]['attack'];
-    memoryData[roomNumber][other]['vacancy'][otherCharacterIndex]['life'] = oterHurt;
-    memoryData[roomNumber][who]['vacancy'][myCharacterIndex]['life'] = myHurt;
+    memoryData[roomNumber][other]['vacancy'][otherCharacterIndex]['life'] -= memoryData[roomNumber][who]['vacancy'][myCharacterIndex]['attack'];
+    memoryData[roomNumber][who]['vacancy'][myCharacterIndex]['life'] -= memoryData[roomNumber][other]['vacancy'][otherCharacterIndex]['attack'];
     memoryData[roomNumber][who]['vacancy'][myCharacterIndex].isAttack = 1;
+
+    if(memoryData[roomNumber][who]['vacancy'][myCharacterIndex].onAttack){
+      memoryData[roomNumber][who]['vacancy'][myCharacterIndex].onAttack({
+        myGameData: memoryData[roomNumber][who],
+        otherGameData: memoryData[roomNumber][other],
+        myCard: memoryData[roomNumber][who]['vacancy'][myCharacterIndex],
+        otherCard: memoryData[roomNumber][other]['vacancy'][otherCharacterIndex],
+      })
+    }
+
+    if(memoryData[roomNumber][other]['vacancy'][otherCharacterIndex].onBeAttack){
+      memoryData[roomNumber][other]['vacancy'][otherCharacterIndex].onBeAttack({
+        myGameData: memoryData[roomNumber][other],
+        otherGameData: memoryData[roomNumber][who],
+        myCard: memoryData[roomNumber][other]['vacancy'][otherCharacterIndex],
+        otherCard: memoryData[roomNumber][who]['vacancy'][myCharacterIndex],
+      })
+    }
+
+    for(let i = memoryData[roomNumber][who]['vacancy'].length - 1; i >= 0; i--){
+      let card = memoryData[roomNumber][who]['vacancy'][i];
+      if(card.life <= 0){
+        if(card.onEnd){
+          card.onEnd({
+            myGameData: memoryData[roomNumber][who],
+            otherGameData: memoryData[roomNumber][other],
+            myCard: card,
+          })
+        }
+
+        memoryData[roomNumber][who]['vacancy'][i] = i;
+      }
+    }
+
+    for(let i = memoryData[roomNumber][other]['vacancy'].length - 1; i >= 0; i--){
+      let card = memoryData[roomNumber][other]['vacancy'][i];
+      if(card.life <= 0){
+        if(card.onEnd){
+          card.onEnd({
+            myGameData: memoryData[roomNumber][other],
+            otherGameData: memoryData[roomNumber][who],
+            myCard: card,
+          })
+        }
+
+        memoryData[roomNumber][other]['vacancy'][i] = i;
+      }
+    }
+
+    // let oterHurt = memoryData[roomNumber][other]['vacancy'][otherCharacterIndex]['life'] - memoryData[roomNumber][who]['vacancy'][myCharacterIndex]['attack'];
+    // let myHurt = memoryData[roomNumber][who]['vacancy'][myCharacterIndex]['life'] - memoryData[roomNumber][other]['vacancy'][otherCharacterIndex]['attack'];
+    // memoryData[roomNumber][other]['vacancy'][otherCharacterIndex]['life'] = oterHurt;
+    // memoryData[roomNumber][who]['vacancy'][myCharacterIndex]['life'] = myHurt;
 
     // if (oterHurt > 0 && myHurt <= 0) {//对方生物有血，己方生物没血
     //   overType = OverBattleType.OTHER
